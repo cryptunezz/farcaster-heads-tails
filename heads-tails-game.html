@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heads or Tails</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the coin flip animation */
+        @keyframes flip {
+            0% { transform: rotateY(0deg); }
+            50% { transform: rotateY(1800deg); } /* 5 full rotations */
+            100% { transform: rotateY(3600deg); } /* 10 full rotations */
+        }
+
+        .coin-animation {
+            animation: flip 2s ease-out forwards;
+        }
+
+        /* Inter font for better aesthetics */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Modal specific styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+            max-width: 90%;
+            width: 400px;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+
+        /* Custom Message Box Styles */
+        .message-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 1001;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .message-box.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<!-- Changed background to Farcaster violet to blue gradient -->
+<body class="bg-gradient-to-br from-violet-700 to-blue-600 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border-b-4 border-purple-700">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-6 tracking-tight">Heads or Tails</h1>
+
+        <!-- Score, Level, Lives Display -->
+        <div class="flex justify-between items-center mb-6 text-gray-700 font-semibold text-lg">
+            <p>Score: <span id="scoreDisplay">0</span></p>
+            <p>Level: <span id="levelDisplay">1</span></p>
+            <p>Lives: <span id="livesDisplay">3</span></p>
+        </div>
+
+        <!-- Coin Display Area - Now dynamically loads image or '?' -->
+        <div id="coin" class="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-8 flex items-center justify-center text-6xl font-bold text-gray-600 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-inner">
+            <!-- Content will be dynamically inserted by JavaScript -->
+        </div>
+
+        <!-- User Choice Buttons -->
+        <div class="flex justify-center space-x-4 mb-6">
+            <button id="chooseHeads" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300">
+                Heads
+            </button>
+            <button id="chooseTails" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
+                Tails
+            </button>
+        </div>
+
+        <!-- Result and Message Area -->
+        <p id="result" class="text-2xl font-semibold text-gray-700 mb-4"></p>
+        <p id="message" class="text-lg text-gray-600 mb-6"></p>
+
+        <!-- Reset Button -->
+        <button id="resetGame" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-5 rounded-xl shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300">
+            Play Again
+        </button>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="text-3xl font-extrabold text-gray-800 mb-4">Game Over!</h2>
+            <p class="text-xl text-gray-700 mb-2">Final Score: <span id="finalScoreDisplay" class="font-bold">0</span></p>
+            <p id="gameOverMessage" class="text-lg text-gray-600 mb-6">Better luck next time!</p>
+            <button id="shareScoreButton" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-5 rounded-xl shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 mr-2">
+                Share Score
+            </button>
+            <button id="playAgainModalButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-5 rounded-xl shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Message Box -->
+    <div id="customMessageBox" class="message-box">
+        <span id="messageBoxText"></span>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const chooseHeadsButton = document.getElementById('chooseHeads');
+        const chooseTailsButton = document.getElementById('chooseTails');
+        const resetButton = document.getElementById('resetGame');
+        const coinElement = document.getElementById('coin');
+        const resultElement = document.getElementById('result');
+        const messageElement = document.getElementById('message');
+
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const livesDisplay = document.getElementById('livesDisplay');
+
+        const gameOverModal = document.getElementById('gameOverModal');
+        const finalScoreDisplay = document.getElementById('finalScoreDisplay');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const shareScoreButton = document.getElementById('shareScoreButton');
+        const playAgainModalButton = document.getElementById('playAgainModalButton');
+
+        const customMessageBox = document.getElementById('customMessageBox');
+        const messageBoxText = document.getElementById('messageBoxText');
+
+        // Define image URLs for Heads and Tails
+        // IMPORTANT: Replace these with your actual transparent PNG image URLs!
+        const headsImageUrl = "https://placehold.co/128x128/FFFFFF/000000/png?text=HEADS"; // Placeholder for Heads image
+        const tailsImageUrl = "https://placehold.co/128x128/FFFFFF/000000/png?text=TAILS"; // Placeholder for Tails image
+
+        // Game state variables
+        let userChoice = null; // Stores the user's choice (0 for Heads, 1 for Tails)
+        let isFlipping = false; // Flag to prevent multiple flips
+        let score = 0;
+        let level = 1;
+        let lives = 3; // Initial lives
+        const LIVES_UNLOCK_LEVEL = 5; // Level at which lives are unlocked
+        const POINTS_PER_LEVEL = 5; // Points needed to advance a level
+        const INITIAL_LIVES = 3; // Initial lives at the start of the game
+
+        // Function to show a custom message box
+        function showMessageBox(message) {
+            messageBoxText.textContent = message;
+            customMessageBox.classList.add('show');
+            setTimeout(() => {
+                customMessageBox.classList.remove('show');
+            }, 3000); // Hide after 3 seconds
+        }
+
+        // Function to update the display of score, level, and lives
+        function updateGameDisplay() {
+            scoreDisplay.textContent = score;
+            levelDisplay.textContent = level;
+            livesDisplay.textContent = lives;
+        }
+
+        // Function to display the coin face (image or '?')
+        function displayCoinFace(isQuestionMark, imageUrl = '') {
+            coinElement.innerHTML = ''; // Clear previous content
+            if (isQuestionMark) {
+                const span = document.createElement('span');
+                span.textContent = '?';
+                coinElement.appendChild(span);
+            } else {
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = "Coin Face";
+                img.classList.add('w-full', 'h-full', 'object-contain', 'rounded-full'); // Tailwind classes for image styling
+                // Fallback for broken image or slow load
+                img.onerror = () => {
+                    img.src = ''; // Clear broken image
+                    const fallbackSpan = document.createElement('span');
+                    fallbackSpan.textContent = imageUrl.includes('HEADS') ? 'H' : 'T';
+                    coinElement.innerHTML = ''; // Clear img
+                    coinElement.appendChild(fallbackSpan);
+                };
+                coinElement.appendChild(img);
+            }
+        }
+
+        // Function to simulate the coin flip
+        function flipCoin() {
+            if (isFlipping || lives <= 0) return; // Prevent flipping if already in progress or game over
+            isFlipping = true;
+
+            // Clear previous results and messages
+            resultElement.textContent = '';
+            messageElement.textContent = 'Flipping...';
+            displayCoinFace(true); // Show '?' during flip
+            coinElement.classList.remove('coin-animation', 'bg-green-100', 'bg-red-100'); // Remove previous background colors
+
+            // Add animation class
+            coinElement.classList.add('coin-animation');
+
+            // Simulate the flip outcome (0 for Heads, 1 for Tails)
+            const outcome = Math.floor(Math.random() * 2); // 0 or 1
+
+            // After the animation completes (2 seconds), reveal the result
+            setTimeout(() => {
+                coinElement.classList.remove('coin-animation'); // Remove animation class
+                const outcomeText = outcome === 0 ? 'Heads' : 'Tails';
+                const outcomeImageUrl = outcome === 0 ? headsImageUrl : tailsImageUrl;
+                displayCoinFace(false, outcomeImageUrl); // Display the image based on outcome
+
+                resultElement.textContent = `It's ${outcomeText}!`;
+
+                // Determine if the user won or lost
+                if (userChoice !== null) {
+                    if (userChoice === outcome) {
+                        messageElement.textContent = 'You win!';
+                        coinElement.classList.add('bg-green-100'); // Green background for win
+
+                        // Award points
+                        let pointsAwarded = 1;
+                        if (level >= LIVES_UNLOCK_LEVEL && level % 5 === 0) {
+                            pointsAwarded *= 2; // 2x points after every 5 levels (from level 5 onwards)
+                        }
+                        score += pointsAwarded;
+
+                        // Check for level up
+                        if (score >= level * POINTS_PER_LEVEL) {
+                            level++;
+                            messageElement.textContent += ` Level Up! You are now Level ${level}!`;
+                            // Grant extra lives at every 5 levels from LIVES_UNLOCK_LEVEL
+                            if (level >= LIVES_UNLOCK_LEVEL && level % 5 === 0) {
+                                lives += 2;
+                                messageElement.textContent += ` You gained 2 extra lives!`;
+                            }
+                        }
+
+                    } else {
+                        messageElement.textContent = 'You lose!';
+                        coinElement.classList.add('bg-red-100'); // Red background for lose
+
+                        // Deduct a life
+                        lives--;
+                    }
+                } else {
+                    messageElement.textContent = 'Choose Heads or Tails to play!';
+                }
+
+                updateGameDisplay(); // Update score, level, lives display
+
+                isFlipping = false; // Reset flipping flag
+                enableButtons(); // Re-enable buttons after flip
+
+                // Check for Game Over
+                if (lives <= 0) {
+                    gameOver();
+                }
+
+            }, 2000); // Match this duration with the CSS animation duration
+        }
+
+        // Function to handle user choice
+        function handleChoice(choice) {
+            if (lives <= 0) return; // Don't allow choices if game is over
+            userChoice = choice;
+            messageElement.textContent = `You chose ${choice === 0 ? 'Heads' : 'Tails'}.`;
+            disableButtons(); // Disable buttons during flip
+            flipCoin();
+        }
+
+        // Function to reset the game
+        function resetGame() {
+            userChoice = null;
+            score = 0;
+            level = 1;
+            lives = INITIAL_LIVES; // Reset lives to initial value
+            resultElement.textContent = '';
+            messageElement.textContent = 'Choose Heads or Tails to play!';
+            displayCoinFace(true); // Show '?' on reset
+            coinElement.classList.remove('bg-green-100', 'bg-red-100'); // Remove background colors
+            updateGameDisplay(); // Update display
+            enableButtons();
+            hideGameOverModal(); // Hide modal on reset
+        }
+
+        // Function to disable choice buttons
+        function disableButtons() {
+            chooseHeadsButton.disabled = true;
+            chooseTailsButton.disabled = true;
+            chooseHeadsButton.classList.add('opacity-50', 'cursor-not-allowed');
+            chooseTailsButton.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Function to enable choice buttons
+        function enableButtons() {
+            chooseHeadsButton.disabled = false;
+            chooseTailsButton.disabled = false;
+            chooseHeadsButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            chooseTailsButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Function to show Game Over modal
+        function gameOver() {
+            finalScoreDisplay.textContent = score;
+            let finalMessage = '';
+            if (score < 5) {
+                finalMessage = "Better luck next time! Keep practicing!";
+            } else if (score < 15) {
+                finalMessage = "Good effort! You're getting the hang of it!";
+            } else if (score < 30) {
+                finalMessage = "Impressive score! You're a coin-flipping master!";
+            } else {
+                finalMessage = "Outstanding! You're a true Heads or Tails legend!";
+            }
+            gameOverMessage.textContent = finalMessage;
+            showGameOverModal();
+            disableButtons(); // Ensure buttons are disabled when game is over
+        }
+
+        // Function to show the game over modal
+        function showGameOverModal() {
+            gameOverModal.classList.add('show');
+        }
+
+        // Function to hide the game over modal
+        function hideGameOverModal() {
+            gameOverModal.classList.remove('show');
+        }
+
+        // Function to share the score
+        function shareScore() {
+            const shareText = `I just played Heads or Tails and scored ${score} points! Can you beat my high score? #HeadsOrTailsGame`;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Heads or Tails Score',
+                    text: shareText,
+                    url: window.location.href // Share the current URL of the mini-app
+                }).then(() => {
+                    console.log('Score shared successfully!');
+                }).catch((error) => {
+                    console.error('Error sharing:', error);
+                    // Fallback for browsers that don't support Web Share API or permission denied
+                    copyToClipboard(shareText);
+                    showMessageBox('Score text copied to clipboard! You can paste it to share.');
+                });
+            } else {
+                // Fallback for browsers that don't support Web Share API at all
+                copyToClipboard(shareText);
+                showMessageBox('Score text copied to clipboard! You can paste it to share.');
+            }
+        }
+
+        // Function to copy text to clipboard
+        function copyToClipboard(text) {
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                showMessageBox('Could not copy text. Please manually copy it.');
+            } finally {
+                document.body.removeChild(tempInput);
+            }
+        }
+
+        // Event Listeners
+        chooseHeadsButton.addEventListener('click', () => handleChoice(0)); // 0 for Heads
+        chooseTailsButton.addEventListener('click', () => handleChoice(1)); // 1 for Tails
+        resetButton.addEventListener('click', resetGame);
+        playAgainModalButton.addEventListener('click', resetGame); // Play again from modal
+        shareScoreButton.addEventListener('click', shareScore); // Share score from modal
+
+        // Initial setup
+        resetGame(); // Set initial message and state
+    </script>
+</body>
+</html>
