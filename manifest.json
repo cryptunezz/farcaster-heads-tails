@@ -1,0 +1,12 @@
+{
+  "name": "Heads or Tails Game",
+  "description": "Flip a coin and test your luck! A simple, fun Farcaster mini app.",
+  "url": "https://cryptunezz.github.io/farcaster-heads-tails/",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/cryptunezz/farcaster-heads-tails/refs/heads/main/farcaster-heads-tails.png",
+      "type": "image/png"
+    }
+  ],
+  "manifest_version": 1
+}
