@@ -163,9 +163,10 @@
         const messageBoxText = document.getElementById('messageBoxText');
 
         // Define image URLs for Heads and Tails
-        // IMPORTANT: Replace these with your actual transparent PNG image URLs!
-        const headsImageUrl = "https://placehold.co/128x128/FFFFFF/000000/png?text=HEADS"; // Placeholder for Heads image
-        const tailsImageUrl = "https://placehold.co/128x128/FFFFFF/000000/png?text=TAILS"; // Placeholder for Tails image
+        // IMPORTANT: Ensure these image files (coin-heads.png, coin-tails.png) are in the same directory as your HTML file,
+        // or update the paths accordingly if they are in a subfolder (e.g., "./images/coin-heads.png").
+        const headsImageUrl = "coin-heads.png";
+        const tailsImageUrl = "coin-tails.png";
 
         // Game state variables
         let userChoice = null; // Stores the user's choice (0 for Heads, 1 for Tails)
@@ -209,7 +210,7 @@
                 img.onerror = () => {
                     img.src = ''; // Clear broken image
                     const fallbackSpan = document.createElement('span');
-                    fallbackSpan.textContent = imageUrl.includes('HEADS') ? 'H' : 'T';
+                    fallbackSpan.textContent = imageUrl.includes('heads') ? 'H' : 'T'; // Check for 'heads' in filename
                     coinElement.innerHTML = ''; // Clear img
                     coinElement.appendChild(fallbackSpan);
                 };
